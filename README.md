@@ -44,6 +44,7 @@ The class FG_eval in MPC.cpp implements following state update equations:
 *L<sub>f</sub>* is a physical parameter of the vehicle
 * *v<sub>t+1</sub> = v<sub>t</sub> + a<sub>t</sub> dt*
 * *dt*, the change in time is defined in MPC.cpp
+
 The update equations allow the MPC to consider the future position of the vehicle given a set of commands at each time step. The MPC uses a cost function to minimize the error of the cost components, the update equations, actuator values and the waypath the vehicle should travel to optimize the actuator values at each measurement step given future positions. This makes the MPC dynamic since it considers the future waypath of the vehicle when optimizing actuator commands right now.
 
 Model Predictive Control (MPC) uses an optimizer to find the control inputs that minimize the cost function and follows the following algorithm:
@@ -52,23 +53,23 @@ Here is the MPC algorithm:
 #### Setup:
 
 * Define the length of the trajectory, *N*, and duration of each timestep, *dt*
-** values set in MPC.cpp
+  *  values set in MPC.cpp
 * Define vehicle dynamics and actuator limitations along with other constraints
-** constants defined at the top of MPC.cpp and set in class function MPC::Solve
+  * constants defined at the top of MPC.cpp and set in class function MPC::Solve
 * Define the cost function
-** defined in class FG_eval with a cost component for *cte*, *epsi*, *v*, *a*, *6*, *da/dt* and *d6/dt*
-** each cost component has a weight parameter to tune which component has a higher weight when optimizing
+  * defined in class FG_eval with a cost component for *cte*, *epsi*, *v*, *a*, *6*, *da/dt* and *d6/dt*
+  * each cost component has a weight parameter to tune which component has a higher weight when optimizing
 
 #### Loop:
 
 * pass the current state as the initial state to the model predictive controller
-** values received from simulator and processed into car's reference frame from global reference system for each point on desired path for the vehicle (waypoints)
-** fit polynomial to the desire path
+  * values received from simulator and processed into car's reference frame from global reference system for each point on desired path for the vehicle (waypoints)
+ * fit polynomial to the desire path
 * call the optimization solver. Given the initial state, the solver will return the vector of control inputs that minimizes the cost function. The solver used is called Ipopt.
-** this passed the current state vector and fitted coefficients for the vehicle path to MPC:Solve
+  * this passed the current state vector and fitted coefficients for the vehicle path to MPC:Solve
 * apply the first control input to the vehicle.
-** MPC::solve returns the first accuator values for the throttle and steering angle
-** the fitted trajectory from the MPC::Solve is passed to the simulator as well as the desired path
+  * MPC::solve returns the first accuator values for the throttle and steering angle
+  * the fitted trajectory from the MPC::Solve is passed to the simulator as well as the desired path
 * back to pass the current state as the initial state to the model predictive controller
 
 ### Timestep Length and Elapsed Duration (N & dt)
