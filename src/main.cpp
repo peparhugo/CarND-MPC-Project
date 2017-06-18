@@ -98,8 +98,45 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          double steer_value;
-          double throttle_value;
+
+          //initialize vectors for points in car reference frame
+          vector<double> vec_x_trnsfm;
+          vector<double> vec_y_trnsfm;
+          Eigen::VectorXd eig_x_trnsfm(ptsy.size());
+          Eigen::VectorXd eig_y_trnsfm(ptsy.size());
+
+          //convert path points from global reference frame to car's reference frame
+          for (int i=0; i<ptsx.size(); i++){
+	    double x = ptsx[i] - px;
+	    double y = ptsy[i] - py;
+            double x_trnsfm = cos(-psi) * (x) - sin(-psi) * (y);
+            double y_trnsfm = sin(-psi) * (x) + cos(-psi) * (y);
+
+            //store transformed path points
+            vec_x_trnsfm.push_back(x_trnsfm);
+            vec_y_trnsfm.push_back(y_trnsfm);
+            eig_x_trnsfm[i]=x_trnsfm;
+            eig_y_trnsfm[i]=y_trnsfm;
+          }
+
+          //fit 3rd order polynomial to desired path coefficients
+          Eigen::VectorXd path_coeffs = polyfit(eig_x_trnsfm, eig_y_trnsfm, 3);
+
+          //cte is intercept from polyfit
+          double cte = path_coeffs[0];
+
+          //epsi is the negative arctan of the first order path coefficient
+          double epsi = -atan(path_coeffs[1]);
+
+          //set state vector for x, y, psi, v, cte, epsi
+          Eigen::VectorXd eig_state(6);
+          eig_state << 0,0,0,v,cte,epsi;
+
+          //use MPC solver for the best vehicle trajectory based on the best fitted path and current state
+          vector<double> mpc_result = mpc.Solve(eig_state, path_coeffs);
+          //set steering value and throttle. normalize steer value based on 25 degree limit in radians
+          double steer_value=-mpc_result[0]/deg2rad(25);
+          double throttle_value= mpc_result[1];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -113,13 +150,18 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
+          //stored each sequential result of x, y so mpc result i and i+1 is x,y pair, ignoring element 0 and 1 of mpc result
+          for( int i = 0; i < mpc_result.size()-2 ; i = i + 2 ){
+            mpc_x_vals.push_back(mpc_result[i]);
+            mpc_y_vals.push_back(mpc_result[i+1]);
+          }
 
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
-          //Display the waypoints/reference line
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
+          //Display the waypoints/reference line and set to transformed path points in car's reference frame
+          vector<double> next_x_vals = vec_x_trnsfm;
+          vector<double> next_y_vals = vec_y_trnsfm;
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
